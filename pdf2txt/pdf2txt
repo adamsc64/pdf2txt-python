@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+import argparse
+import io
+import sys
+
+from wand.image import Image
+from PIL import Image as PI
+import pyocr
+import pyocr.builders
+
+
+ENGLISH = 'eng'
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Convert a PDF into text using OCR.')
+    parser.add_argument('-i', '--infile',
+                        nargs='?',
+                        type=argparse.FileType('r'),
+                        required=True,
+                        default=sys.stdin)
+    parser.add_argument('-o', '--outfile',
+                        nargs='?',
+                        type=argparse.FileType('w'),
+                        required=True,
+                        default=sys.stdout)
+    parser.add_argument('-v', '--verbose',
+                        action='count')
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    tool = pyocr.get_available_tools()[0]
+    if ENGLISH not in tool.get_available_languages():
+        raise ValueError("English not installed")
+    final_text = []
+    if args.verbose: print "Loading file %s..." % args.infile
+    image_pdf = Image(file=args.infile, resolution=300)
+    image_jpeg = image_pdf.convert('jpeg')
+    if args.verbose: print "There are %s images in total." % (
+        len(image_jpeg.sequence))
+    for i, img in enumerate(image_jpeg.sequence):
+        img_page = Image(image=img)
+        if args.verbose: print "Getting image %s..." % (i + 1)
+        img = img_page.make_blob('jpeg')
+        if args.verbose: print "Converting to string..."
+        line = tool.image_to_string(
+            PI.open(io.BytesIO(img)),
+            lang=ENGLISH,
+            builder=pyocr.builders.TextBuilder(),
+        )
+        line = line.encode("utf-8")
+        if args.verbose: print "Writing to file..."
+        args.outfile.write(line)
+    args.outfile.close()
+
+
+
+if __name__ == "__main__":
+    main()
+
