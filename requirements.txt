@@ -1,0 +1,8 @@
+# System-level packages:
+########################
+# imagemagick
+# tesseract-eng
+# tesseract-ocr
+wand
+pyocr
+pillow
